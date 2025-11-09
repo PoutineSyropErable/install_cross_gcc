@@ -6,10 +6,10 @@ CROSS_DIR="$HOME/cross-gcc"
 GCC_VER="15.2.0"
 BINUTILS_VER="2.42"
 TARGET="i686-elf"
-PREFIX="$CROSS_DIR/install-i686"
+PREFIX="$CROSS_DIR/install-$TARGET"
 
 # --- Create directories ---
-mkdir -p "$CROSS_DIR" "$CROSS_DIR/build-binutils-i686" "$CROSS_DIR/build-gcc-i686" "$PREFIX"
+mkdir -p "$CROSS_DIR" "$CROSS_DIR/build-binutils-$TARGET" "$CROSS_DIR/build-gcc-$TARGET" "$PREFIX"
 cd "$CROSS_DIR"
 
 # --- Download binutils ---
@@ -31,7 +31,7 @@ fi
 [[ -d gcc-$GCC_VER ]] || tar xf "$GCC_TAR"
 
 # --- Build binutils ---
-cd build-binutils-i686
+cd "build-binutils-$TARGET"
 ../binutils-$BINUTILS_VER/configure \
 	--target=$TARGET \
 	--prefix=$PREFIX \
@@ -45,7 +45,7 @@ make install
 export PATH="$PREFIX/bin:$PATH"
 
 # --- Build GCC ---
-cd ../build-gcc-i686
+cd "../build-gcc-$TARGET"
 ../gcc-$GCC_VER/configure \
 	--prefix=$PREFIX \
 	--target=$TARGET \
@@ -57,5 +57,10 @@ cd ../build-gcc-i686
 	--disable-build-format-warnings
 make all-gcc -j"$(nproc)"
 make install-gcc
+# --- Build target runtime libraries ---
+make all-target-libgcc -j"$(nproc)"
+make install-target-libgcc
+# make all-target-libstdc++-v3 -j"$(nproc)"
+# make install-target-libstdc++-v3
 
-echo "✅ i686-elf GCC $GCC_VER installed successfully at $PREFIX"
+echo "✅ $TARGET GCC $GCC_VER installed successfully at $PREFIX"
