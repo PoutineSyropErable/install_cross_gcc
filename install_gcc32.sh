@@ -60,7 +60,9 @@ make install-gcc
 # --- Build target runtime libraries ---
 make all-target-libgcc -j"$(nproc)"
 make install-target-libgcc
-# make all-target-libstdc++-v3 -j"$(nproc)"
-# make install-target-libstdc++-v3
-
+# C++ Support (No runtime so cancel the bellow)
+if false; then
+	make all-target-libstdc++-v3 -j"$(nproc)"
+	make install-target-libstdc++-v3
+fi
 echo "✅ $TARGET GCC $GCC_VER installed successfully at $PREFIX"
