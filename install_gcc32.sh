@@ -30,39 +30,66 @@ else
 fi
 [[ -d gcc-$GCC_VER ]] || tar xf "$GCC_TAR"
 
-# --- Build binutils ---
-cd "build-binutils-$TARGET"
-../binutils-$BINUTILS_VER/configure \
-	--target=$TARGET \
-	--prefix=$PREFIX \
-	--disable-nls \
-	--disable-werror \
-	--with-sysroot
-make -j"$(nproc)"
-make install
 
-# Add binutils to PATH for GCC build
-export PATH="$PREFIX/bin:$PATH"
+BIN_UTILS_STATE_FILE="../gcc32_binutils"
 
-# --- Build GCC ---
-cd "../build-gcc-$TARGET"
-../gcc-$GCC_VER/configure \
-	--prefix=$PREFIX \
-	--target=$TARGET \
-	--disable-nls \
-	--disable-werror \
-	--disable-multilib \
-	--without-headers \
-	--enable-languages=c,c++ \
-	--disable-build-format-warnings
-make all-gcc -j"$(nproc)"
-make install-gcc
-# --- Build target runtime libraries ---
-make all-target-libgcc -j"$(nproc)"
-make install-target-libgcc
-# C++ Support (No runtime so cancel the bellow)
-if false; then
-	make all-target-libstdc++-v3 -j"$(nproc)"
-	make install-target-libstdc++-v3
-fi
-echo "✅ $TARGET GCC $GCC_VER installed successfully at $PREFIX"
+
+function build_binutils() 
+	# --- Build binutils ---
+	cd "build-binutils-$TARGET"
+	../binutils-$BINUTILS_VER/configure \
+		--target=$TARGET \
+		--prefix=$PREFIX \
+		--disable-nls \
+		--disable-werror \
+		--with-sysroot
+	make -j"$(nproc)"
+	make install
+
+
+	# Bin util = true
+	echo "true" > "$BIN_UTILS_STATE_FILE"
+end
+
+
+
+function build_gcc()
+	# Add binutils to PATH for GCC build
+	export PATH="$PREFIX/bin:$PATH"
+
+	# --- Build GCC ---
+	cd "../build-gcc-$TARGET"
+	../gcc-$GCC_VER/configure \
+		--prefix=$PREFIX \
+		--target=$TARGET \
+		--disable-nls \
+		--disable-werror \
+		--disable-multilib \
+		--without-headers \
+		--enable-languages=c,c++ \
+		--disable-build-format-warnings
+	make all-gcc -j"$(nproc)"
+
+	echo "true" > ../gcc32_make
+	end
+
+function install_gcc()
+	make install-gcc
+	echo "true" > ../gcc32_install
+end
+
+function install_gcc_lib()
+	# --- Build target runtime libraries ---
+	make all-target-libgcc -j"$(nproc)"
+	make install-target-libgcc
+	# C++ Support (No runtime so cancel the bellow)
+	if false; then
+		make all-target-libstdc++-v3 -j"$(nproc)"
+		make install-target-libstdc++-v3
+	fi
+	echo "true" > ../gcc32_lib
+	echo "✅ $TARGET GCC $GCC_VER installed successfully at $PREFIX"
+end
+
+
+
