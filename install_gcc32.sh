@@ -8,88 +8,85 @@ BINUTILS_VER="2.42"
 TARGET="i686-elf"
 PREFIX="$CROSS_DIR/install-$TARGET"
 
+BIN_UTILS_STATE_FILE="$CROSS_DIR/gcc32_binutils"
+GCC_BUILD_STATE_FILE="$CROSS_DIR/gcc32_make"
+GCC_INSTALL_STATE_FILE="$CROSS_DIR/gcc32_install"
+GCC_LIB_STATE_FILE="$CROSS_DIR/gcc32_lib"
+
 # --- Create directories ---
 mkdir -p "$CROSS_DIR" "$CROSS_DIR/build-binutils-$TARGET" "$CROSS_DIR/build-gcc-$TARGET" "$PREFIX"
 cd "$CROSS_DIR"
 
 # --- Download binutils ---
 BINUTILS_TAR="binutils-$BINUTILS_VER.tar.gz"
-if [[ ! -f $BINUTILS_TAR ]]; then
-	wget "https://ftp.gnu.org/gnu/binutils/$BINUTILS_TAR"
-else
-	echo "$BINUTILS_TAR already exists, skipping."
-fi
+[[ -f $BINUTILS_TAR ]] || wget "https://ftp.gnu.org/gnu/binutils/$BINUTILS_TAR"
 [[ -d binutils-$BINUTILS_VER ]] || tar xf "$BINUTILS_TAR"
 
 # --- Download GCC ---
 GCC_TAR="gcc-$GCC_VER.tar.gz"
-if [[ ! -f $GCC_TAR ]]; then
-	wget "https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VER/$GCC_TAR"
-else
-	echo "$GCC_TAR already exists, skipping."
-fi
+[[ -f $GCC_TAR ]] || wget "https://ftp.gnu.org/gnu/gcc/gcc-$GCC_VER/$GCC_TAR"
 [[ -d gcc-$GCC_VER ]] || tar xf "$GCC_TAR"
 
+# --- Functions ---
+build_binutils() {
+    echo "Building binutils..."
+    cd "build-binutils-$TARGET"
+    ../binutils-$BINUTILS_VER/configure \
+        --target=$TARGET \
+        --prefix=$PREFIX \
+        --disable-nls \
+        --disable-werror \
+        --with-sysroot
+    make -j"$(nproc)"
+    make install
+    echo "true" > "$BIN_UTILS_STATE_FILE"
+    cd ..
+}
 
-BIN_UTILS_STATE_FILE="../gcc32_binutils"
+build_gcc() {
+    echo "Building GCC..."
+    export PATH="$PREFIX/bin:$PATH"
+    cd "build-gcc-$TARGET"
+    ../gcc-$GCC_VER/configure \
+        --prefix=$PREFIX \
+        --target=$TARGET \
+        --disable-nls \
+        --disable-werror \
+        --disable-multilib \
+        --without-headers \
+        --enable-languages=c,c++ \
+        --disable-build-format-warnings
+    make all-gcc -j"$(nproc)"
+    echo "true" > "$GCC_BUILD_STATE_FILE"
+    cd ..
+}
 
+install_gcc() {
+    echo "Installing GCC..."
+    cd "build-gcc-$TARGET"
+    make install-gcc
+    echo "true" > "$GCC_INSTALL_STATE_FILE"
+    cd ..
+}
 
-function build_binutils() 
-	# --- Build binutils ---
-	cd "build-binutils-$TARGET"
-	../binutils-$BINUTILS_VER/configure \
-		--target=$TARGET \
-		--prefix=$PREFIX \
-		--disable-nls \
-		--disable-werror \
-		--with-sysroot
-	make -j"$(nproc)"
-	make install
+install_gcc_lib() {
+    echo "Building target runtime libraries..."
+    cd "build-gcc-$TARGET"
+    make all-target-libgcc -j"$(nproc)"
+    make install-target-libgcc
+    # C++ runtime (optional)
+    if false; then
+        make all-target-libstdc++-v3 -j"$(nproc)"
+        make install-target-libstdc++-v3
+    fi
+    echo "true" > "$GCC_LIB_STATE_FILE"
+    echo "✅ $TARGET GCC $GCC_VER installed successfully at $PREFIX"
+    cd ..
+}
 
-
-	# Bin util = true
-	echo "true" > "$BIN_UTILS_STATE_FILE"
-end
-
-
-
-function build_gcc()
-	# Add binutils to PATH for GCC build
-	export PATH="$PREFIX/bin:$PATH"
-
-	# --- Build GCC ---
-	cd "../build-gcc-$TARGET"
-	../gcc-$GCC_VER/configure \
-		--prefix=$PREFIX \
-		--target=$TARGET \
-		--disable-nls \
-		--disable-werror \
-		--disable-multilib \
-		--without-headers \
-		--enable-languages=c,c++ \
-		--disable-build-format-warnings
-	make all-gcc -j"$(nproc)"
-
-	echo "true" > ../gcc32_make
-	end
-
-function install_gcc()
-	make install-gcc
-	echo "true" > ../gcc32_install
-end
-
-function install_gcc_lib()
-	# --- Build target runtime libraries ---
-	make all-target-libgcc -j"$(nproc)"
-	make install-target-libgcc
-	# C++ Support (No runtime so cancel the bellow)
-	if false; then
-		make all-target-libstdc++-v3 -j"$(nproc)"
-		make install-target-libstdc++-v3
-	fi
-	echo "true" > ../gcc32_lib
-	echo "✅ $TARGET GCC $GCC_VER installed successfully at $PREFIX"
-end
-
-
+# --- Check state files and execute steps ---
+[[ -f $BIN_UTILS_STATE_FILE && $(<"$BIN_UTILS_STATE_FILE") == "true" ]] || build_binutils
+[[ -f $GCC_BUILD_STATE_FILE && $(<"$GCC_BUILD_STATE_FILE") == "true" ]] || build_gcc
+[[ -f $GCC_INSTALL_STATE_FILE && $(<"$GCC_INSTALL_STATE_FILE") == "true" ]] || install_gcc
+[[ -f $GCC_LIB_STATE_FILE && $(<"$GCC_LIB_STATE_FILE") == "true" ]] || install_gcc_lib
 
