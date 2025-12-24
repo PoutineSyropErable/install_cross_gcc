@@ -14,12 +14,17 @@ GCC_INSTALL_STATE_FILE="$CROSS_DIR/gcc32_install"
 GCC_LIB_STATE_FILE="$CROSS_DIR/gcc32_lib"
 
 # --- Create directories ---
-mkdir -p "$CROSS_DIR" "$CROSS_DIR/build-binutils-$TARGET" "$CROSS_DIR/build-gcc-$TARGET" "$PREFIX"
-cd "$CROSS_DIR"
+mkdir -p "$CROSS_DIR" \
+         "$CROSS_DIR/build-binutils-$TARGET" \
+         "$CROSS_DIR/build-gcc-$TARGET" \
+         "$PREFIX"
+
+# --- Ensure starting from CROSS_DIR ---
+pushd "$CROSS_DIR" >/dev/null
 
 # --- Download binutils ---
 BINUTILS_TAR="binutils-$BINUTILS_VER.tar.gz"
-[[ -f $BINUTILS_TAR ]] || wget "https://ftp.gnu.org/gnu/binutils/$BINUTILS_TAR"
+[[ -f $BINUTILS_TAR ]] || wget "https://ftp.gnu.org/gnu/binutils/$BINUTILS_VER/$BINUTILS_TAR"
 [[ -d binutils-$BINUTILS_VER ]] || tar xf "$BINUTILS_TAR"
 
 # --- Download GCC ---
@@ -30,7 +35,7 @@ GCC_TAR="gcc-$GCC_VER.tar.gz"
 # --- Functions ---
 build_binutils() {
     echo "Building binutils..."
-    cd "build-binutils-$TARGET"
+    pushd "$CROSS_DIR/build-binutils-$TARGET" >/dev/null
     ../binutils-$BINUTILS_VER/configure \
         --target=$TARGET \
         --prefix=$PREFIX \
@@ -40,13 +45,13 @@ build_binutils() {
     make -j"$(nproc)"
     make install
     echo "true" > "$BIN_UTILS_STATE_FILE"
-    cd ..
+    popd >/dev/null
 }
 
 build_gcc() {
     echo "Building GCC..."
     export PATH="$PREFIX/bin:$PATH"
-    cd "build-gcc-$TARGET"
+    pushd "$CROSS_DIR/build-gcc-$TARGET" >/dev/null
     ../gcc-$GCC_VER/configure \
         --prefix=$PREFIX \
         --target=$TARGET \
@@ -58,35 +63,39 @@ build_gcc() {
         --disable-build-format-warnings
     make all-gcc -j"$(nproc)"
     echo "true" > "$GCC_BUILD_STATE_FILE"
-    cd ..
+    popd >/dev/null
 }
 
 install_gcc() {
     echo "Installing GCC..."
-    cd "build-gcc-$TARGET"
+    pushd "$CROSS_DIR/build-gcc-$TARGET" >/dev/null
     make install-gcc
     echo "true" > "$GCC_INSTALL_STATE_FILE"
-    cd ..
+    popd >/dev/null
 }
 
 install_gcc_lib() {
     echo "Building target runtime libraries..."
-    cd "build-gcc-$TARGET"
+    pushd "$CROSS_DIR/build-gcc-$TARGET" >/dev/null
     make all-target-libgcc -j"$(nproc)"
     make install-target-libgcc
-    # C++ runtime (optional)
+    # Optional C++ runtime
     if false; then
         make all-target-libstdc++-v3 -j"$(nproc)"
         make install-target-libstdc++-v3
     fi
     echo "true" > "$GCC_LIB_STATE_FILE"
     echo "✅ $TARGET GCC $GCC_VER installed successfully at $PREFIX"
-    cd ..
+    popd >/dev/null
 }
 
-# --- Check state files and execute steps ---
+# --- Conditional execution ---
 [[ -f $BIN_UTILS_STATE_FILE && $(<"$BIN_UTILS_STATE_FILE") == "true" ]] || build_binutils
 [[ -f $GCC_BUILD_STATE_FILE && $(<"$GCC_BUILD_STATE_FILE") == "true" ]] || build_gcc
 [[ -f $GCC_INSTALL_STATE_FILE && $(<"$GCC_INSTALL_STATE_FILE") == "true" ]] || install_gcc
 [[ -f $GCC_LIB_STATE_FILE && $(<"$GCC_LIB_STATE_FILE") == "true" ]] || install_gcc_lib
+
+# --- Return to original directory ---
+popd >/dev/null
+
 

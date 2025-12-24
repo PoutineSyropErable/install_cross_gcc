@@ -6,6 +6,9 @@
 !install_gcc16.sh
 !install_gcc32.sh
 !install_gcc64.sh
+
+
+!install_all.sh
 !move_to_user_local_syswide.sh
 
 !readme.md
