@@ -1,0 +1,11 @@
+# Ignore everything
+*
+
+# But keep the install scripts
+!.gitignore
+!install_gcc16.sh
+!install_gcc32.sh
+!install_gcc64.sh
+!move_to_user_local_syswide.sh
+
+!readme.md
