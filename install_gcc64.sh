@@ -8,10 +8,11 @@ BINUTILS_VER="2.42"
 TARGET="x86_64-elf"
 PREFIX="$CROSS_DIR/install-$TARGET"
 
-BIN_UTILS_STATE_FILE="$CROSS_DIR/gcc64_binutils"
-GCC_BUILD_STATE_FILE="$CROSS_DIR/gcc64_make"
-GCC_INSTALL_STATE_FILE="$CROSS_DIR/gcc64_install"
-GCC_LIB_STATE_FILE="$CROSS_DIR/gcc64_lib"
+mkdir -p "$CROSS_DIR/state_files"
+BIN_UTILS_STATE_FILE="$CROSS_DIR/state_files/gcc64_binutils"
+GCC_BUILD_STATE_FILE="$CROSS_DIR/state_files/gcc64_make"
+GCC_INSTALL_STATE_FILE="$CROSS_DIR/state_files/gcc64_install"
+GCC_LIB_STATE_FILE="$CROSS_DIR/state_files/gcc64_lib"
 
 # --- Create directories ---
 mkdir -p "$CROSS_DIR" \

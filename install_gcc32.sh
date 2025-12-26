@@ -8,9 +8,10 @@ BINUTILS_VER="2.42"
 TARGET="i686-elf"
 PREFIX="$CROSS_DIR/install-$TARGET"
 
-BIN_UTILS_STATE_FILE="$CROSS_DIR/gcc32_binutils"
-GCC_BUILD_STATE_FILE="$CROSS_DIR/gcc32_make"
-GCC_INSTALL_STATE_FILE="$CROSS_DIR/gcc32_install"
+mkdir -p "$CROSS_DIR/state_files"
+BIN_UTILS_STATE_FILE="$CROSS_DIR/state_files/gcc32_binutils"
+GCC_BUILD_STATE_FILE="$CROSS_DIR/state_files/gcc32_make"
+GCC_INSTALL_STATE_FILE="$CROSS_DIR/state_files/gcc32_install"
 GCC_LIB_STATE_FILE="$CROSS_DIR/gcc32_lib"
 
 # --- Create directories ---
